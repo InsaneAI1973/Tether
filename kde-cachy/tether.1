@@ -1,0 +1,218 @@
+.TH TETHER 1 "2026-05-24" "0.6.6" "Tether Network Mount Manager"
+.SH NAME
+tether \- mount and manage network shares from the command line
+.SH SYNOPSIS
+.B tether
+.I COMMAND
+[OPTIONS]
+.SH DESCRIPTION
+.B Tether
+is a network mount manager for KDE Plasma on CachyOS and Arch-based
+Linux distributions. It provides a guided GUI wizard for connecting to
+SMB/CIFS (Windows shares), NFS, and SSHFS network shares, a file
+transfer engine built on rsync with progress tracking and resume
+support, and a full command-line interface for headless and server use.
+.PP
+Tether is designed to give Linux newcomers a network file sharing
+experience comparable to Windows "Map Network Drive", without requiring
+knowledge of mount commands, fstab, or network protocols.
+.SH COMMANDS
+.TP
+.B list
+List all configured network mounts and their current connection status.
+.TP
+.B add
+Add and mount a network share interactively. Prompts for protocol,
+host, share name, and credentials. Writes an fstab entry so the share
+reconnects automatically on login.
+.RS
+.TP
+.B \-\-label \fINAME\fR
+Mount label (used as /mnt/NAME). Letters, digits, dash and underscore only.
+.TP
+.B \-\-protocol \fIPROTO\fR
+Protocol: \fBcifs\fR (SMB/Windows), \fBnfs\fR, or \fBsshfs\fR.
+.TP
+.B \-\-host \fIHOST\fR
+Server IP address or hostname.
+.TP
+.B \-\-path \fISHARE\fR
+Share name or export path on the server.
+.TP
+.B \-\-options \fIOPTS\fR
+Extra mount options (e.g. vers=3.0). Optional.
+.RE
+.TP
+.B remove \fILABEL\fR
+Unmount a share, remove its fstab entry, and delete its credentials file.
+.TP
+.B transfer \fISRC\fR \fIDST\fR
+Start an rsync file transfer from SRC to DST with progress tracking
+and resume support. SRC and DST may be local paths or mounted share
+paths (e.g. /mnt/nas/folder).
+.TP
+.B pause \fIJOB_ID\fR
+Pause a running transfer by sending SIGSTOP to the rsync process.
+.TP
+.B resume \fIJOB_ID\fR
+Resume a paused transfer by sending SIGCONT to the rsync process.
+.TP
+.B cancel \fIJOB_ID\fR
+Cancel a transfer. Partial files are kept at the destination (use
+\-\-partial to resume later).
+.TP
+.B watch
+Display a live dashboard showing mount status and transfer progress.
+Updates every 2 seconds. Press Ctrl+C to exit.
+.RS
+.TP
+.B \-\-interval \fISECS\fR
+Update interval in seconds (default: 2).
+.RE
+.SH FILES
+.TP
+.I ~/.local/share/tether/tether.log
+Application log file. Contains mount operations, transfer progress,
+and diagnostic output.
+.TP
+.I ~/.local/share/tether/mounts.json
+Persistent record of configured mounts. Do not edit manually.
+.TP
+.I ~/.local/share/tether/credentials/
+Directory for credential files (chmod 700). Used by the file backend
+when KWallet is unavailable.
+.TP
+.I /etc/samba/.tether_LABEL
+CIFS credentials file for mount LABEL (root:root, chmod 600).
+Written automatically when a CIFS share is added.
+.TP
+.I /etc/fstab
+Tether appends one line per mount, tagged with \fI# tether:LABEL\fR.
+These lines are removed automatically when a share is unmounted via
+\fBtether remove\fR.
+.TP
+.I /opt/tether-kde/
+Installation directory for all Tether Python source files.
+.TP
+.I ~/.config/systemd/user/tether-daemon.service
+Systemd user service that starts the Tether daemon at login.
+.SH DAEMON
+Tether runs a persistent background daemon
+.RB ( daemon.py )
+that registers on the D-Bus session bus as
+.IR pro.tether.Daemon .
+All GUI and CLI frontends communicate with this daemon rather than
+performing privileged operations directly.
+.PP
+The daemon handles mount/unmount operations, fstab management,
+rsync transfer processes, and automatic reconnection of dropped mounts.
+Privileged operations (creating mountpoints, writing fstab, mounting)
+are performed via
+.BR pkexec (1)
+helper scripts written to secure temporary files.
+.PP
+The daemon starts automatically at login via systemd. It can be
+managed manually:
+.PP
+.RS
+.nf
+systemctl --user start   tether-daemon.service
+systemctl --user stop    tether-daemon.service
+systemctl --user restart tether-daemon.service
+systemctl --user status  tether-daemon.service
+.fi
+.RE
+.SH SECURITY
+Tether is designed with security as a primary concern:
+.IP \(bu 3
+User-supplied strings (host, share name) are validated against a
+blocklist of shell metacharacters before use.
+.IP \(bu 3
+Privileged helper scripts are written to
+.BR mkstemp (3)
+paths with mode 700 set before content is written, eliminating
+race conditions.
+.IP \(bu 3
+CIFS credentials are stored in
+.I /etc/samba/.tether_LABEL
+(root:root, chmod 600), not embedded in fstab.
+.IP \(bu 3
+Credentials are stored in KWallet when available, with a plaintext
+chmod 600 file fallback for headless systems.
+.IP \(bu 3
+All subprocess calls use list arguments — no shell=True, no
+command string interpolation.
+.SH EXAMPLES
+Mount a Windows share interactively:
+.PP
+.RS
+.nf
+tether add
+.fi
+.RE
+.PP
+Mount a specific share non-interactively:
+.PP
+.RS
+.nf
+tether add --label nas --protocol cifs --host 192.168.1.2 --path Media
+.fi
+.RE
+.PP
+Check mount status:
+.PP
+.RS
+.nf
+tether list
+.fi
+.RE
+.PP
+Transfer files from a network share to local storage:
+.PP
+.RS
+.nf
+tether transfer /mnt/nas/Photos /home/user/Pictures/Backup
+.fi
+.RE
+.PP
+Live dashboard:
+.PP
+.RS
+.nf
+tether watch
+.fi
+.RE
+.SH DEPENDENCIES
+.BR rsync (1),
+.BR smbclient (1),
+.BR nmblookup (1),
+.BR pkexec (1),
+.BR findmnt (8),
+.BR mount (8),
+.BR python3 (1),
+python3-pyqt5,
+python3-dbus,
+python3-gobject
+.SH BUGS
+Please report bugs at https://github.com/InsaneAI1973/tether/issues
+.SH AUTHORS
+Conceived and tested by David Hays.
+.PP
+Written by Claude (Anthropic), an AI assistant, in collaboration with
+David Hays through an iterative vibe-coding process. The architecture,
+security model, and all source code were produced by Claude based on
+requirements and real-world testing feedback provided by David Hays.
+.SH LICENSE
+GNU General Public License v3.0 or later.
+.PP
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+.SH SEE ALSO
+.BR mount.cifs (8),
+.BR nfs (5),
+.BR sshfs (1),
+.BR rsync (1),
+.BR fstab (5),
+.BR pkexec (1)
