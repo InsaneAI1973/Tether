@@ -72,18 +72,29 @@ underlying technology is excellent. The gap is presentation, not capability.
 
 ## Current Status
 
-**Version 0.6.6 — KDE/CachyOS Edition**
+> ⚠️ **Beta Software** — Tether is functional and actively tested on real
+> hardware but is not yet a stable release. Expect rough edges. Bug reports
+> via [GitHub Issues](https://github.com/InsaneAI1973/Tether/issues) are
+> very welcome.
 
-Actively developed and tested. Core functionality is working:
+**Version 0.7.2 — KDE/CachyOS Edition**
 
-- ✅ SMB/CIFS mount and unmount via GUI wizard and CLI
-- ✅ Network share discovery and authenticated share listing
-- ✅ Persistent mounts surviving reboot
+Actively developed and tested on KDE Plasma 6.6.5 / KWin Wayland / CachyOS.
+Core functionality is working:
+
+- ✅ SMB/CIFS mount and unmount via guided wizard and CLI
+- ✅ Automatic network discovery — finds servers and lists shares
+- ✅ Share names with spaces fully supported
+- ✅ Persistent mounts surviving reboot via fstab
 - ✅ KDE system tray with autostart on login
+- ✅ Dolphin file manager integration
 - ✅ File transfers with progress, speed, ETA, pause/resume/cancel
-- ✅ Transfer history management with privacy controls
+- ✅ All rsync options as plain-English checkboxes — no terminal needed
+- ✅ Transfer history with individual dismiss and Clear History
 - ✅ Advanced mode for power users
 - ✅ Full CLI for headless/server use
+- ✅ Credentials stored in KWallet — never in plaintext config files
+- ✅ IPv4 preferred over IPv6 for maximum compatibility
 
 This release targets **KDE Plasma on CachyOS** (Arch-based). Support for
 additional desktop environments and distributions is planned once the core
