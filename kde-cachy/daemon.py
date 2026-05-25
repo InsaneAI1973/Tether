@@ -14,7 +14,7 @@ Security model:
   - Host/path inputs validated against a blocklist of shell metacharacters
 """
 
-VERSION = '0.7.0'
+VERSION = '0.7.2'
 
 import re
 import os
@@ -141,6 +141,9 @@ def resolve_to_ipv4(host: str) -> str:
     # Can't resolve — return original and let mount fail with a clear error
     log.warning('Could not resolve %r — using as-is', host)
     return host
+
+
+def validate_mountpoint(mountpoint: str) -> bool:
     """
     Ensure mountpoint resolves strictly to /mnt/<name> — no traversal.
     An empty label producing /mnt/ itself is explicitly blocked.

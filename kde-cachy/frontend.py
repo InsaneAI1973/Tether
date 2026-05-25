@@ -31,7 +31,7 @@ from PyQt5.QtCore import Qt, QThread, pyqtSignal, QSize, QSettings
 from PyQt5.QtGui import QIcon, QFont
 
 log = logging.getLogger('tether.frontend')
-VERSION = '0.7.0'
+VERSION = '0.7.1'
 
 # Persistent settings
 _settings = QSettings('Tether', 'Tether')
@@ -209,29 +209,23 @@ def discover_servers() -> list:
 
     log.info('Discovery found %d server(s): %s', len(servers), servers)
 
-    # Deduplicate by name — if a server appears with both IPv4 and IPv6,
-    # keep only the IPv4 entry. IPv6 causes fstab compatibility issues.
+    # Only filter out IPv6 entries — keep ALL IPv4 entries even if same
+    # server name appears multiple times (legitimate multiple interfaces)
     import socket as _socket
-    preferred = {}
-    for name, ip in servers:
-        is_ipv4 = True
+    result = []
+    for name, ip in sorted(servers, key=lambda x: x[0].lower()):
+        is_ipv6 = False
         try:
             _socket.inet_pton(_socket.AF_INET6, ip)
-            is_ipv4 = False  # it's IPv6
+            is_ipv6 = True
         except OSError:
-            pass  # it's IPv4 or a hostname
-
-        if name not in preferred:
-            preferred[name] = (name, ip)
-        elif not is_ipv4:
-            # Already have an entry for this name — don't replace IPv4 with IPv6
             pass
-        else:
-            # We have IPv4 — always prefer it over whatever was there
-            preferred[name] = (name, ip)
+        if is_ipv6:
+            log.debug('Skipping IPv6 entry: %s %s', name, ip)
+            continue
+        result.append((name, ip))
 
-    result = sorted(preferred.values(), key=lambda x: x[0].lower())
-    log.info('After IPv4 dedup: %s', result)
+    log.info('After IPv6 filter: %s', result)
     return result
 
 
