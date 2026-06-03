@@ -8,7 +8,7 @@ Adds the kde-cachy directory to sys.path so all local imports work,
 then starts either the GUI (default) or CLI based on arguments.
 """
 
-VERSION = '0.7.0'
+VERSION = '0.7.3'
 
 import os
 import sys
@@ -29,10 +29,19 @@ def _check_kde() -> bool:
 
 
 def main():
-    # Suppress Qt Wayland warning about requestActivate — cosmetic only,
-    # not a functional issue
-    import os
+    # Suppress Qt Wayland warning about requestActivate — cosmetic only
     os.environ.setdefault('QT_LOGGING_RULES', 'qt.qpa.wayland=false')
+
+    # Auto-detect display platform — set QT_QPA_PLATFORM if not already set
+    # so Tether works on both X11 and Wayland without manual env vars
+    if 'QT_QPA_PLATFORM' not in os.environ:
+        wayland_display = os.environ.get('WAYLAND_DISPLAY', '')
+        x11_display     = os.environ.get('DISPLAY', '')
+        if wayland_display:
+            os.environ['QT_QPA_PLATFORM'] = 'wayland'
+        elif x11_display:
+            os.environ['QT_QPA_PLATFORM'] = 'xcb'
+        # If neither is set, let Qt figure it out
     # CLI commands pass through directly — no DE check needed
     cli_commands = {'list', 'add', 'remove', 'transfer',
                     'pause', 'resume', 'cancel', 'watch'}

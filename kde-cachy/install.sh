@@ -58,6 +58,8 @@ PKGS=(
     kwalletmanager          # KWallet GUI (allows user to manage stored passwords)
     polkit                  # Privilege escalation framework
     polkit-kde-agent        # KDE polkit agent — shows password dialog on Wayland
+    qt5-wayland             # Qt5 Wayland platform plugin
+    qt6-wayland             # Qt6 Wayland platform plugin
     rsync                   # Transfer engine with resume and progress
     cifs-utils              # SMB/CIFS mount support
     nfs-utils               # NFS mount support
@@ -121,7 +123,25 @@ fi
 section "Installing Dolphin service menu"
 
 mkdir -p "${DOLPHIN_DIR}"
-cp "${SCRIPT_DIR}/tether-dolphin.desktop" "${DOLPHIN_DIR}/"
+
+# Write directly — no external file dependency
+cat > "${DOLPHIN_DIR}/tether-dolphin.desktop" << 'DOLPHIN'
+[Desktop Entry]
+Type=Service
+ServiceTypes=KonqPopupMenu/Plugin
+MimeType=inode/directory;
+Actions=tether_mount_here;tether_transfer_to;
+
+[Desktop Action tether_mount_here]
+Name=Mount Network Location here… (Tether)
+Icon=network-server
+Exec=tether add
+
+[Desktop Action tether_transfer_to]
+Name=Transfer files to/from here via Tether…
+Icon=folder-remote
+Exec=tether transfer %F
+DOLPHIN
 
 # Rebuild KDE service menu cache
 if command -v kbuildsycoca6 &>/dev/null; then
@@ -134,7 +154,22 @@ fi
 section "Installing application entry"
 
 mkdir -p "${APPS_DIR}"
-cp "${SCRIPT_DIR}/tether.desktop" "${APPS_DIR}/"
+
+# Write desktop file directly — no external file dependency
+cat > "${APPS_DIR}/tether.desktop" << 'DESKTOP'
+[Desktop Entry]
+Name=Tether
+GenericName=Network Mount Manager
+Comment=Mount network shares via SMB, NFS, or SSHFS
+Exec=/usr/local/bin/tether
+Icon=network-server
+Terminal=false
+Type=Application
+Categories=Network;FileTransfer;System;
+Keywords=mount;network;share;smb;cifs;nfs;sshfs;
+StartupNotify=false
+DESKTOP
+
 update-desktop-database "${APPS_DIR}" 2>/dev/null || true
 info "Application entry installed. ✓"
 
