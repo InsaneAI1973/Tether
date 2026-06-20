@@ -8,7 +8,7 @@ Adds the kde-cachy directory to sys.path so all local imports work,
 then starts either the GUI (default) or CLI based on arguments.
 """
 
-VERSION = '0.7.3'
+VERSION = '0.7.9'
 
 import os
 import sys
@@ -43,7 +43,7 @@ def main():
             os.environ['QT_QPA_PLATFORM'] = 'xcb'
         # If neither is set, let Qt figure it out
     # CLI commands pass through directly — no DE check needed
-    cli_commands = {'list', 'add', 'remove', 'transfer',
+    cli_commands = {'list', 'add', 'remove', 'scan', 'log', 'transfer',
                     'pause', 'resume', 'cancel', 'watch'}
 
     if len(sys.argv) > 1 and sys.argv[1] in cli_commands:

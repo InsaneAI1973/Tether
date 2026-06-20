@@ -31,7 +31,7 @@ from PyQt5.QtCore import Qt, QThread, pyqtSignal, QSize, QSettings
 from PyQt5.QtGui import QIcon, QFont
 
 log = logging.getLogger('tether.frontend')
-VERSION = '0.7.1'
+VERSION = '0.7.9'
 
 # Persistent settings
 _settings = QSettings('Tether', 'Tether')
@@ -1273,6 +1273,126 @@ class NewTransferDialog(QDialog):
         }
 
 
+# ── Orphaned mounts cleanup dialog ──────────────────────────────────────────
+
+class OrphanedMountsDialog(QDialog):
+    """
+    Shows mounts found under /mnt that aren't tracked by this Tether
+    install — typically leftovers from a previous install, an
+    interrupted uninstall, or a manual fstab entry. Lets the user
+    unmount and clean them up without needing the terminal, since
+    Dolphin's unmount button can't handle root-owned network mounts.
+    """
+
+    def __init__(self, parent, orphans: list, client):
+        super().__init__(parent)
+        self.client  = client
+        self.orphans = orphans
+        self.setWindowTitle('Tether – Other Mounts Found')
+        self.setMinimumWidth(560)
+        self._build()
+
+    def _build(self):
+        root = QVBoxLayout(self)
+
+        intro = QLabel(
+            f'Found {len(self.orphans)} mount(s) under /mnt that are not '
+            f'managed by this Tether install. These are usually left over '
+            f'from a previous install, a manual mount, or an interrupted '
+            f'uninstall.\n\n'
+            f'Select any you want to unmount and remove.'
+        )
+        intro.setWordWrap(True)
+        root.addWidget(intro)
+
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        inner  = QWidget()
+        vbox   = QVBoxLayout(inner)
+        vbox.setAlignment(Qt.AlignTop)
+
+        self._checks = []
+        for o in self.orphans:
+            row = QFrame()
+            row.setFrameShape(QFrame.StyledPanel)
+            row_layout = QVBoxLayout(row)
+
+            cb = QCheckBox(o['mountpoint'])
+            cb.setStyleSheet('font-weight: bold;')
+            row_layout.addWidget(cb)
+
+            status_bits = []
+            if o.get('credentials_only'):
+                status_bits.append('leftover password file only — no mount, no fstab entry')
+            else:
+                status_bits.append('currently mounted' if o.get('mounted')
+                                    else 'not currently mounted')
+                if o.get('fstab_tagged'):
+                    status_bits.append('has a leftover fstab entry')
+            detail = QLabel(
+                f"{o.get('source','?')}  ({o.get('fstype','?')})  —  "
+                f"{', '.join(status_bits)}"
+            )
+            detail.setStyleSheet('color: grey; font-size: 11px;')
+            detail.setWordWrap(True)
+            row_layout.addWidget(detail)
+
+            vbox.addWidget(row)
+            self._checks.append((cb, o['mountpoint']))
+
+        scroll.setWidget(inner)
+        root.addWidget(scroll)
+
+        btn_row = QHBoxLayout()
+        select_all = QPushButton('Select All')
+        select_all.clicked.connect(self._select_all)
+        btn_row.addWidget(select_all)
+        btn_row.addStretch()
+        close_btn = QPushButton('Close')
+        close_btn.clicked.connect(self.reject)
+        remove_btn = QPushButton('Unmount && Remove Selected')
+        remove_btn.setDefault(True)
+        remove_btn.clicked.connect(self._on_remove_selected)
+        btn_row.addWidget(close_btn)
+        btn_row.addWidget(remove_btn)
+        root.addLayout(btn_row)
+
+    def _select_all(self):
+        for cb, _ in self._checks:
+            cb.setChecked(True)
+
+    def _on_remove_selected(self):
+        selected = [mp for cb, mp in self._checks if cb.isChecked()]
+        if not selected:
+            QMessageBox.information(self, 'Tether', 'Nothing selected.')
+            return
+
+        reply = QMessageBox.warning(
+            self, 'Tether – Confirm Removal',
+            f'This will unmount and remove {len(selected)} mount(s):\n\n'
+            + '\n'.join(f'  • {mp}' for mp in selected)
+            + '\n\nThis cannot be undone. Continue?',
+            QMessageBox.Yes | QMessageBox.No, QMessageBox.No,
+        )
+        if reply != QMessageBox.Yes:
+            return
+
+        # Single batched call — one password prompt no matter how many
+        # mounts are selected, instead of one prompt per mount.
+        result = self.client.remove_orphaned_mounts(selected)
+
+        if result.startswith('ERROR'):
+            QMessageBox.warning(
+                self, 'Tether', f'Removal failed:\n\n{result}'
+            )
+        else:
+            QMessageBox.information(
+                self, 'Tether',
+                f'Removed {len(selected)} mount(s) successfully.'
+            )
+        self.accept()
+
+
 # ── Main management window ────────────────────────────────────────────────────
 
 class TetherWindow(QDialog):
@@ -1315,11 +1435,24 @@ class TetherWindow(QDialog):
         scroll.setWidget(self._mounts_inner)
         mounts_layout.addWidget(scroll)
 
+        # Bottom button row — primary connect action + scan for leftovers
+        btn_row = QHBoxLayout()
         connect_btn = QPushButton('+  Connect to Network Share…')
         connect_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         connect_btn.setMinimumHeight(36)
         connect_btn.clicked.connect(self._on_add)
-        mounts_layout.addWidget(connect_btn)
+        btn_row.addWidget(connect_btn)
+
+        scan_btn = QPushButton('Scan for Other Mounts…')
+        scan_btn.setMinimumHeight(36)
+        scan_btn.setToolTip(
+            'Find mounts under /mnt left over from a previous install\n'
+            'or that Dolphin cannot unmount (e.g. root-owned network shares)'
+        )
+        scan_btn.clicked.connect(self._on_scan_orphaned)
+        btn_row.addWidget(scan_btn)
+
+        mounts_layout.addLayout(btn_row)
         tabs.addTab(mounts_page, 'Network Connections')
 
         # Transfers tab
@@ -1407,6 +1540,11 @@ class TetherWindow(QDialog):
         menu.addAction(advanced)
 
         menu.addSeparator()
+        scan = QAction('Scan for Other Mounts…', self)
+        scan.triggered.connect(self._on_scan_orphaned)
+        menu.addAction(scan)
+
+        menu.addSeparator()
         about = QAction(f'About Tether {VERSION}', self)
         about.triggered.connect(self._show_about)
         menu.addAction(about)
@@ -1414,6 +1552,24 @@ class TetherWindow(QDialog):
         menu.exec_(self.sender().mapToGlobal(
             self.sender().rect().bottomLeft()
         ))
+
+    def _on_scan_orphaned(self):
+        try:
+            orphans = self.client.scan_orphaned_mounts()
+        except Exception as e:
+            QMessageBox.critical(self, 'Tether', f'Scan failed.\n\n{e}')
+            return
+
+        if not orphans:
+            QMessageBox.information(
+                self, 'Tether',
+                'No other mounts found.\n\n'
+                'Every share under /mnt is already managed by Tether.'
+            )
+            return
+
+        dlg = OrphanedMountsDialog(self, orphans, self.client)
+        dlg.exec_()
 
     def _toggle_advanced(self, checked: bool):
         _set_advanced_mode(checked)

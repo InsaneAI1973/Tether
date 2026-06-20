@@ -1,4 +1,4 @@
-.TH TETHER 1 "2026-05-24" "0.6.6" "Tether Network Mount Manager"
+.TH TETHER 1 "2026-06-20" "0.7.9" "Tether Network Mount Manager"
 .SH NAME
 tether \- mount and manage network shares from the command line
 .SH SYNOPSIS
@@ -8,7 +8,7 @@ tether \- mount and manage network shares from the command line
 .SH DESCRIPTION
 .B Tether
 is a network mount manager for KDE Plasma on CachyOS and Arch-based
-Linux distributions. It provides a guided GUI wizard for connecting to
+Linux distributions. It provides a guided wizard for connecting to
 SMB/CIFS (Windows shares), NFS, and SSHFS network shares, a file
 transfer engine built on rsync with progress tracking and resume
 support, and a full command-line interface for headless and server use.
@@ -16,6 +16,10 @@ support, and a full command-line interface for headless and server use.
 Tether is designed to give Linux newcomers a network file sharing
 experience comparable to Windows "Map Network Drive", without requiring
 knowledge of mount commands, fstab, or network protocols.
+.PP
+All rsync transfer options (resume, skip newer, compress, dry run,
+delete, preserve permissions) are available as plain-English checkboxes
+in the GUI — no terminal required.
 .SH COMMANDS
 .TP
 .B list
@@ -34,10 +38,12 @@ Mount label (used as /mnt/NAME). Letters, digits, dash and underscore only.
 Protocol: \fBcifs\fR (SMB/Windows), \fBnfs\fR, or \fBsshfs\fR.
 .TP
 .B \-\-host \fIHOST\fR
-Server IP address or hostname.
+Server IP address or hostname. Tether resolves hostnames to IPv4
+automatically for maximum fstab compatibility.
 .TP
 .B \-\-path \fISHARE\fR
-Share name or export path on the server.
+Share name or export path on the server. Share names containing
+spaces are fully supported.
 .TP
 .B \-\-options \fIOPTS\fR
 Extra mount options (e.g. vers=3.0). Optional.
@@ -45,6 +51,29 @@ Extra mount options (e.g. vers=3.0). Optional.
 .TP
 .B remove \fILABEL\fR
 Unmount a share, remove its fstab entry, and delete its credentials file.
+.TP
+.B scan
+Find mounts under /mnt that exist on disk but are not tracked by this
+Tether install — typically leftovers from a previous install, a manual
+mount, or an interrupted uninstall. Useful when Dolphin's unmount
+button fails because the mount is root-owned.
+.RS
+.TP
+.B \-\-remove
+Interactively prompt to unmount and remove each found mount.
+.RE
+.TP
+.B log
+Show the audit log of mount and credential changes Tether has made —
+every AddMount, RemoveMount, and orphan cleanup is recorded with a
+timestamp, action, label, and result. Stored at
+.I ~/.local/share/tether/audit.log
+as newline-delimited JSON. Never contains passwords.
+.RS
+.TP
+.B \-n \fICOUNT\fR
+Number of most recent entries to show (default: 20).
+.RE
 .TP
 .B transfer \fISRC\fR \fIDST\fR
 Start an rsync file transfer from SRC to DST with progress tracking
@@ -75,8 +104,15 @@ Update interval in seconds (default: 2).
 Application log file. Contains mount operations, transfer progress,
 and diagnostic output.
 .TP
+.I ~/.local/share/tether/audit.log
+Append-only audit trail of every mount/unmount and credential file
+created or removed by Tether, as newline-delimited JSON. Never
+contains passwords. View with
+.B tether log .
+.TP
 .I ~/.local/share/tether/mounts.json
-Persistent record of configured mounts. Do not edit manually.
+Persistent record of configured mounts. Credentials are never stored
+here — only label, protocol, host, share path, and options.
 .TP
 .I ~/.local/share/tether/credentials/
 Directory for credential files (chmod 700). Used by the file backend
@@ -88,8 +124,8 @@ Written automatically when a CIFS share is added.
 .TP
 .I /etc/fstab
 Tether appends one line per mount, tagged with \fI# tether:LABEL\fR.
-These lines are removed automatically when a share is unmounted via
-\fBtether remove\fR.
+Spaces in paths are escaped as \040. Lines are removed automatically
+when a share is unmounted via \fBtether remove\fR.
 .TP
 .I /opt/tether-kde/
 Installation directory for all Tether Python source files.
@@ -122,6 +158,17 @@ systemctl --user restart tether-daemon.service
 systemctl --user status  tether-daemon.service
 .fi
 .RE
+.SH KNOWN ISSUES
+.IP \(bu 3
+After removing a share, its entry in Dolphin's Places sidebar may
+remain visible until Dolphin is restarted
+.RB ( kquitapp6\ dolphin ,
+then reopen) or the system is rebooted. The unmount itself completes
+successfully regardless — this is purely a Dolphin display cache
+issue, since CIFS mounts via fstab don't generate the same live
+notifications that removable media does through udisks2. Tether sends
+a best-effort refresh signal after every unmount, but Dolphin does not
+always act on it immediately.
 .SH SECURITY
 Tether is designed with security as a primary concern:
 .IP \(bu 3
@@ -137,11 +184,17 @@ CIFS credentials are stored in
 .I /etc/samba/.tether_LABEL
 (root:root, chmod 600), not embedded in fstab.
 .IP \(bu 3
-Credentials are stored in KWallet when available, with a plaintext
+Mount credentials are passed directly through D-Bus and never
+written to mounts.json or any other plaintext config file.
+.IP \(bu 3
+Credentials are stored in KWallet when available, with a
 chmod 600 file fallback for headless systems.
 .IP \(bu 3
 All subprocess calls use list arguments — no shell=True, no
 command string interpolation.
+.IP \(bu 3
+Dependencies are installed from official pacman repositories only.
+The AUR is not used.
 .SH EXAMPLES
 Mount a Windows share interactively:
 .PP
@@ -192,9 +245,11 @@ tether watch
 .BR python3 (1),
 python3-pyqt5,
 python3-dbus,
-python3-gobject
+python3-gobject,
+qt5-wayland,
+qt6-wayland
 .SH BUGS
-Please report bugs at https://github.com/InsaneAI1973/tether/issues
+Please report bugs at https://github.com/InsaneAI1973/Tether/issues
 .SH AUTHORS
 Conceived and tested by David Hays.
 .PP

@@ -1,6 +1,6 @@
 [Unit]
 Description=Tether Network Mount Daemon (KDE/CachyOS)
-Documentation=https://github.com/yourusername/tether
+Documentation=https://github.com/InsaneAI1973/Tether
 After=graphical-session.target plasma-ksmserver.service
 PartOf=graphical-session.target
 

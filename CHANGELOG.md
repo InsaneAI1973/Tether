@@ -1,359 +1,34 @@
 # Tether — Changelog
 
-## v0.3.0 — Current
+## v0.7.3 — Current
 **KDE/CachyOS Edition**
-- Fixed: Protocol dropdown now shows human-readable names
-  - `SMB / CIFS (Windows shares, NAS)` instead of `cifs`
-  - `NFS (Linux/Unix shares)` instead of `nfs`
-  - `SSHFS (SSH file system)` instead of `sshfs`
-- Added: Plain-English hint text under protocol selector explaining when to use each
-- Added: Share Name field placeholder text updates dynamically per protocol
-- Added: VERSION string in all source files
-- CLI wizard now shows friendly protocol names matching the GUI
+- Fixed: Tether now auto-detects X11 vs Wayland and sets QT_QPA_PLATFORM
+  automatically. Previously failed to launch on X11 sessions with error:
+  "Could not find the Qt platform plugin wayland"
+  Now checks WAYLAND_DISPLAY and DISPLAY environment variables and sets
+  the correct platform plugin without any manual configuration.
+- Added: qt5-wayland and qt6-wayland added to installer dependencies
+  so fresh installs on any session type work out of the box.
+- Added: make-release.sh — packages all source files into a self-contained
+  tarball for GitHub release distribution. No AUR, no cloning required.
+  Users download one file, extract, and run ./install.sh
+- Fixed: install.sh now embeds all desktop files directly — no longer
+  requires tether.desktop or tether-dolphin.desktop to exist in the
+  source directory. Fresh clones from GitHub install cleanly.
 
-## v0.2.0
-**KDE/CachyOS Edition — First working release**
-- Focused version: KDE Plasma on Wayland, CachyOS (Arch-based) only
-- D-Bus daemon with mount management, rsync transfer engine, auto-reconnect
-- KDE system tray via StatusNotifierItem (Wayland native)
-- KWallet credential storage (file fallback)
-- Dolphin right-click service menu integration
-- KDE autostart on login
-- Full CLI: list, add, remove, transfer, pause, resume, cancel, watch
-- All security fixes from audit: shlex.quote(), validated mountpoints,
-  blocked shell metacharacters, octal chmod, atomic credential writes,
-  chmod-before-write on temp scripts
-- Confirmed working: daemon, D-Bus handshake, CLI, GUI tray, post-reboot autostart
-
-## v0.1.0
-**Multi-distro version — Broad compatibility**
-- Supports: KDE, GNOME, XFCE, Cinnamon, MATE, LXQt, Budgie
-- Supports: Arch/pacman, Debian/apt, Fedora/dnf
-- DE detection via XDG_CURRENT_DESKTOP and process inspection
-- Credential backends: KWallet, libsecret, file fallback
-- Full security audit: 26 bugs fixed, 10 security findings resolved
-- Note: Not live-tested; serves as reference architecture
-
-## v0.4.0
+## v0.7.2
 **KDE/CachyOS Edition**
-- Fixed: CIFS credentials file (/etc/samba/.tether_<label>) now created
-  automatically inside the privileged mount script before mount is attempted.
-  Previously the file had to be created manually causing "No such file or
-  directory" error on first CIFS mount.
-- Credentials are written atomically via mkstemp → install, chmod 600, root:root
-- NFS and SSHFS unaffected (no credentials file needed)
-- Confirmed working: SMB mount to NAS via 192.168.1.2
+- Fixed: validate_mountpoint() NameError on fresh install.
+  The function body had been accidentally merged into resolve_to_ipv4()
+  as unreachable dead code. Fixed by extracting it as a proper
+  top-level function.
 
-## v0.5.0
+## v0.7.1
 **KDE/CachyOS Edition**
-- Added: Guided four-step wizard as the default add-mount experience
-  - Step 1: Auto-discovers servers on local network via nmblookup + avahi
-  - Step 2: Lists available shares automatically via smbclient
-  - Step 3: Simple Yes/No credentials — no technical terminology
-  - Step 4: Name the connection + optional settings via dropdowns/checkboxes
-- Added: Advanced Mode toggle in Options menu for power users
-  - Persists across sessions via QSettings
-  - Advanced dialog retains full technical form with all protocol options
-- Added: All optional settings now accessible via GUI (SMB version dropdown,
-  read-only checkbox, auto-connect checkbox) — no terminal required
-- Added: "Connect to Share" option in tray right-click menu
-- Added: Confirmation dialog before disconnecting a share
-- Added: "Connecting..." progress indicator during mount operations
-- Changed: "Unmount" button renamed to "Disconnect" (more user-friendly)
-- Changed: Tab renamed from "Mounts" to "Network Connections"
-- Changed: Empty state shows helpful prompt instead of blank space
-- Note: Requires nmblookup (part of samba package) for network discovery
-
-## v0.5.1
-**KDE/CachyOS Edition**
-- Fixed: Wizard Step 2 now handles password-protected servers correctly
-  - Tries anonymous share listing first
-  - If that fails, shows inline username/password fields without leaving the step
-  - Retries share listing with provided credentials
-  - Shows clear error if credentials are wrong with option to retry
-- Fixed: Credentials entered in Step 2 are automatically carried forward
-  to Step 3 so the user is never asked to sign in twice
-- Added: Enter key in password field triggers sign-in attempt
-
-## v0.5.2
-**KDE/CachyOS Edition**
-- Fixed: GUI network discovery and share listing now works correctly
-  - Tool paths resolved via shutil.which() + fallback to common Arch locations
-  - All subprocess calls now pass an explicitly expanded PATH environment
-  - smbclient output parser rewritten to correctly read the Sharename/Type
-    table format rather than searching for the word "Disk" in any line
-  - FileNotFoundError, TimeoutExpired, and general exceptions now all
-    handled individually with clear log messages
-  - Debug logging added to smbclient and nmblookup output for diagnostics
-
-## v0.5.3
-**KDE/CachyOS Edition**
-- Fixed: Share parser now correctly handles share names containing spaces
-  (e.g. "Audio Books", "Blue Iris - Storage", "Books and Comics")
-- Fixed: Parser finds share name by locating ' Disk' keyword position
-  rather than splitting on whitespace — works correctly with TrueNAS,
-  Synology, QNAP, and Samba output formats
-- Tested against live TrueNAS output with 22 shares including
-  multiple names containing spaces
-
-## v0.5.4
-**KDE/CachyOS Edition**
-- Changed: Wizard Step 2 now asks for credentials upfront rather than
-  probing anonymously first — more reliable and works universally
-- Changed: Username and password fields clearly marked as optional
-  with placeholder text explaining they can be left blank
-- Changed: Single "Show Shared Folders" button replaces the two-step
-  anonymous probe → credential fallback flow
-- Changed: Enter key in password field triggers share listing
-- Fixed: Credentials carried forward to Step 3 whether entered here
-  or left blank (anonymous access)
-
-## v0.5.5
-**KDE/CachyOS Edition**
-- Added: Diagnostic output panel in Wizard Step 2
-  - Shows raw smbclient stdout, stderr, return code, and parsed shares
-  - Visible after every load attempt to aid troubleshooting
-  - All output also written to ~/.local/share/tether/tether.log
-- Added: Verbose logging of every smbclient invocation including
-  full command, return code, stdout, stderr, and parsed result
-
-## v0.5.6
-**KDE/CachyOS Edition**
-- Fixed: Critical threading bug — WizardPageServer and WizardPageShare
-  were using QMetaObject.invokeMethod() with Q_ARG to communicate from
-  background threads back to the UI thread. This requires methods to be
-  decorated with @pyqtSlot which they were not, causing a silent
-  RuntimeError that swallowed all results from smbclient and nmblookup.
-  Replaced with proper pyqtSignal on each page class — the correct
-  PyQt5 pattern for thread-to-UI communication.
-- This was the root cause of share listing never working in the GUI
-  despite smbclient working correctly on the command line.
-
-## v0.5.7
-**KDE/CachyOS Edition**
-- Fixed: Wizard Step 2 layout no longer clips when window is not maximized
-  - Share list now uses stretch=1 to fill available vertical space
-  - Credential fields fixed at top, share list expands below
-  - Manual entry and debug panel anchored at bottom
-- Fixed: Debug diagnostic panel now only visible on failure, hidden on success
-- Fixed: Folder icon changed from emoji (📁) to text [folder] to avoid
-  font rendering issues showing as empty squares on some systems
-- Fixed: Wizard minimum size increased to 580x540 to prevent clipping
-
-## v0.5.8
-**KDE/CachyOS Edition**
-- Fixed: Removed activateWindow() calls that triggered harmless but
-  noisy Wayland warning "Wayland does not support QWindow::requestActivate()"
-  on every launch. Window show/raise behavior unchanged.
-
-## v0.5.9
-**KDE/CachyOS Edition**
-- Fixed: CIFS credential file creation now works for every mount, not just
-  the first one. Root cause: daemon was calling load_credentials() from
-  KWallet AFTER the mount attempt, but credentials weren't saved there yet.
-  Fix: credentials now passed directly through D-Bus (AddMount gains two
-  new parameters: username and password) and written to the samba cred file
-  inside the privileged mount script before mount is called.
-- Fixed: AddMount D-Bus signature updated from ssssss to ssssssss
-- Fixed: client.py add_mount() updated to pass username and password
-- Fixed: frontend _do_mount() passes credentials through to daemon
-- Fixed: Wizard title bar truncation — title shortened to "Tether 0.5.9"
-
-## v0.5.10
-**KDE/CachyOS Edition**
-- Fixed: Mount script now logs each step with echo statements captured
-  by pkexec — previously errors were silently swallowed
-- Fixed: Both stdout and stderr from pkexec now combined and logged
-  so failure reason is always visible in tether.log
-- Fixed: Removed unused FTMP variable from fstab section (leftover
-  from earlier refactor that was harmless but confusing)
-- Fixed: Mount script logs to tether.log via daemon INFO logger
-  so every pkexec operation is fully auditable
-- Added: exec 2>&1 in mount script to redirect all output through
-  pkexec's capture
-
-## v0.5.11
-**KDE/CachyOS Edition**
-- Fixed: "Connecting..." dialog now closes properly after mount completes
-  Root cause: add_mount() D-Bus call blocks the main Qt thread, preventing
-  event processing including dialog close. Fix: mount now runs in a
-  background thread with pyqtSignal for completion callback — same pattern
-  as share listing. Dialog closes cleanly whether mount succeeds or fails.
-- Fixed: Duplicate signal connections on repeated mounts prevented by
-  disconnecting after each use
-
-## v0.5.12
-**KDE/CachyOS Edition**
-- Fixed: "Connecting..." dialog now closes reliably after mount completes
-  Previous approach used pyqtSignal across threads which failed silently.
-  New approach: background thread writes result to a shared dict, QTimer
-  polls every 500ms on the main thread until the thread finishes, then
-  closes the dialog and shows the result. Guaranteed to run on main thread.
-
-## v0.5.13
-**KDE/CachyOS Edition**
-- Simplified: Removed "Connecting..." progress dialog entirely.
-  The pkexec password prompt already communicates that something
-  is happening. No intermediate dialog needed — just mount and
-  show success or error when done. Less code, fewer failure modes.
-
-## v0.6.0
-**KDE/CachyOS Edition**
-- Added: Full GUI transfer interface — no terminal required
-  - "New File Transfer..." button in the Transfers tab
-  - Browse buttons for source and destination (folder picker)
-  - All rsync options as plain-English checkboxes:
-    * Resume interrupted transfers (--partial)
-    * Skip files already up to date (--update)
-    * Compress during transfer (--compress)
-    * Preserve file permissions (--perms)
-    * Delete files not in source (--delete) — with confirmation warning
-    * Dry run — preview without transferring (--dry-run)
-  - Delete option shows warning dialog before enabling
-- Added: Transfer cards now show plain-English status labels
-  (Transferring, Paused, Complete, Failed instead of raw status words)
-- Added: Pause/Resume/Cancel buttons correctly enable/disable by status
-- Added: rsync option whitelist in daemon — only known safe flags accepted
-- Changed: rsync now uses --info=progress2 for cleaner progress output
-
-## v0.6.1
-**KDE/CachyOS Edition**
-- Fixed: Transfer dialog now shows mounted network shares as selectable
-  options in source and destination dropdowns — no path typing needed
-- Network shares appear at top of each dropdown labeled with their
-  friendly name, host, and share name e.g. "[Network] Games (192.168.1.2/Games)"
-- Selecting a share auto-fills the path field with its mountpoint
-- "My Computer (browse...)" option opens the local folder picker
-- Browse button still available for drilling into subfolders of a share
-- Separator line visually separates network shares from local browse option
-
-## v0.6.2
-**KDE/CachyOS Edition**
-- Fixed: Application crash on dry run transfer
-  - --progress and --info=progress2 were being passed together causing
-    conflicting rsync output that crashed the progress parser
-  - Dry run now uses rsync -avhn (no progress flags) and logs each file
-    that would be transferred to tether.log instead
-  - Progress parser skipped entirely for dry runs
-- Fixed: Dry run completes without attempting any file copies
-- Fixed: Transfer card shows "Dry run — previewing files" during dry run
-- Fixed: Informational dialog explains where to see dry run results
-- Fixed: start_transfer result now checked and error shown if it fails
-- Changed: rsync uses --info=progress2 only (removed conflicting --progress)
-
-## v0.6.3
-**KDE/CachyOS Edition**
-- Fixed: D-Bus signature mismatch on StartTransfer — daemon was running
-  with old 'ss' signature after client was updated to pass 3 args ('sss').
-  All three files (daemon, client, frontend) must be deployed together
-  and daemon restarted for signature changes to take effect.
-- Fixed: Qt Wayland warning "does not support QWindow::requestActivate()"
-  suppressed via QT_LOGGING_RULES=qt.qpa.wayland=false in both the
-  systemd service file and the launcher — purely cosmetic, no functional
-  change.
-
-## v0.6.4
-**KDE/CachyOS Edition**
-- Fixed: Dry run transfer card now shows unambiguous status labels
-  - During:  "Dry run — previewing files, nothing is being copied"
-  - After:   "Dry run complete — no files were copied"
-  - On fail: "Dry run failed"
-  - Speed and ETA fields hidden during dry run to avoid confusion
-    (3003.22GB/s was misleading — it's just rsync at CPU speed)
-
-## v0.6.5
-**KDE/CachyOS Edition**
-- Added: Transfer history can now be cleared for privacy
-  - "Clear History" button removes all completed/failed transfers
-  - Individual ✕ button appears on each card when transfer finishes
-  - Active/running transfers are never removed automatically
-  - Informational message if no completed transfers to clear
-
-## v0.6.6
-**KDE/CachyOS Edition**
-- Fixed: Dismissed transfers reappearing after 2 seconds
-  Root cause: DaemonPoller was re-adding jobs from the daemon's list
-  every poll cycle. Fix: dismissing a card now calls RemoveTransfer
-  on the daemon, removing the record at source so the poller never
-  sees it again.
-- Added: RemoveTransfer D-Bus method on daemon — removes completed
-  or failed jobs from the transfer record. Refuses to remove active
-  or paused transfers (cancel first).
-- Added: remove_transfer() to client proxy
-
-## v0.6.6 (continued)
-- Added: update.sh — one-command update script that handles the full
-  safe deployment sequence automatically:
-  1. Stops tray applet
-  2. Stops daemon cleanly + force-kills any lingering process
-  3. Copies new .py files to /opt/tether-kde
-  4. Updates service file if present
-  5. Restarts daemon and verifies it started
-  6. Relaunches tray applet
-  Usage: ./update.sh (run from the folder containing new files)
-
-## v0.6.6 (continued)
-- Added: tether.1 man page — full manual covering all commands, options,
-  files, security model, and examples. Installed to /usr/local/share/man/man1/
-- Added: README.md — GitHub project page with foreword, feature list,
-  architecture overview, installation instructions, and project attribution
-- Updated: install.sh now installs the man page automatically
-
-## v0.6.7
-**KDE/CachyOS Edition**
-- Fixed: Share names containing spaces now mount correctly
-  (e.g. "Hays Share", "Audio Books", "Blue Iris - Storage")
-  Root cause: space was in _BLOCKED_INPUT_CHARS alongside actual shell
-  metacharacters. SMB share names commonly contain spaces and this is
-  perfectly valid. shlex.quote() already handles spaces safely in all
-  shell contexts — the block was unnecessary and wrong.
-  All actual dangerous characters (newline, semicolon, backtick,
-  dollar sign, etc.) remain blocked.
-
-## v0.6.7 (continued)
-- Fixed: install.sh now copies update.sh and uninstall.sh to
-  /opt/tether-kde/ and sets chmod +x on both automatically
-- Fixed: update.sh was not executable after manual copy — install.sh
-  now handles this correctly so it never needs to be set manually
-
-## v0.6.8
-**KDE/CachyOS Edition**
-- Fixed: Share names containing spaces now mount correctly end-to-end.
-  The fstab entry was being written with literal spaces which the kernel
-  fstab parser treats as field delimiters, causing "parse error at line N".
-  Fix: spaces in source path and mountpoint are escaped as \040 (the
-  standard fstab octal escape for space) before writing to /etc/fstab.
-  The kernel fstab parser correctly interprets \040 as a literal space.
-  Affects: "Hays Share", "Audio Books", "Blue Iris - Storage", and any
-  other SMB share whose name contains spaces.
-
-## v0.6.9
-**KDE/CachyOS Edition**
-- Added: Automatic IPv4 resolution for all hostnames
-  When the user enters a hostname or the wizard discovers a server,
-  Tether now resolves it to an IPv4 address before mounting and
-  writing the fstab entry. This prevents the system from
-  unpredictably choosing IPv6 (which causes fstab compatibility
-  issues and inconsistent reconnection behaviour).
-  Behaviour:
-  - IPv4 address entered → used as-is
-  - Hostname entered → resolved to IPv4 via DNS/mDNS
-  - IPv6 only available → logged as warning, used as fallback
-  - Cannot resolve → original value used, mount will fail clearly
-
-## v0.6.10
-**KDE/CachyOS Edition**
-- Fixed: Network discovery no longer shows duplicate entries for servers
-  that advertise both IPv4 and IPv6 addresses. When both are found,
-  only the IPv4 entry is shown. IPv4 is always preferred over IPv6
-  for CIFS mount compatibility.
-
-## v0.6.10 (updated)
-- Fixed: avahi-browse parser now reads the explicit IPv4/IPv6 protocol
-  field (column 3) in avahi's output format rather than trying to detect
-  address type. IPv6 entries are skipped at parse time — cleaner and
-  more reliable. Tested against real avahi output from TrueNAS showing
-  both IPv4 and IPv6 entries for the same server.
+- Fixed: Network discovery now shows all IPv4 addresses for a server.
+  v0.6.10 deduplication was too aggressive — it kept only one entry
+  per server name, hiding legitimate secondary IPv4 interfaces.
+  IPv6 entries are filtered out, all IPv4 entries kept.
 
 ## v0.7.0
 **KDE/CachyOS Edition**
@@ -364,21 +39,302 @@
   host, remote_path, options, cred_label, and mountpoint are
   persisted. Passwords live only in KWallet or the secure
   credentials store.
-- First clean install release — all patches from v0.6.x integrated
+- First clean install release — all patches from v0.6.x integrated.
 
-## v0.7.1
+## v0.6.10
 **KDE/CachyOS Edition**
-- Fixed: Network discovery now shows all IPv4 addresses for a server.
-  v0.6.10 deduplication was too aggressive — it kept only one entry
-  per server name, hiding legitimate secondary IPv4 interfaces.
-  New behaviour: IPv6 entries are filtered out, all IPv4 entries kept.
-  A NAS with two IPv4 addresses (e.g. 192.168.1.2 and 192.168.1.159)
-  now shows both entries so the user can choose the correct one.
+- Fixed: avahi-browse parser now reads the explicit IPv4/IPv6 protocol
+  field (column 3) in avahi output rather than trying to detect address
+  type. IPv6 entries are skipped at parse time — cleaner and more
+  reliable. Tested against real TrueNAS output.
 
-## v0.7.2
+## v0.6.9
 **KDE/CachyOS Edition**
-- Fixed: validate_mountpoint() NameError on fresh install.
-  The function body had been accidentally merged into resolve_to_ipv4()
-  as unreachable dead code after the return statement, leaving no actual
-  validate_mountpoint definition. Fixed by extracting it as a proper
-  top-level function between resolve_to_ipv4() and write_secure_script().
+- Added: Automatic IPv4 resolution for all hostnames. Tether now
+  resolves hostnames to IPv4 before mounting and writing fstab entries.
+  Prevents the system from unpredictably choosing IPv6, which causes
+  fstab compatibility issues and inconsistent reconnection behaviour.
+
+## v0.6.8
+**KDE/CachyOS Edition**
+- Fixed: Share names containing spaces now mount correctly end-to-end.
+  Spaces in fstab source and mountpoint paths are now escaped as \040
+  (standard fstab octal escape). Affects: "Hays Share", "Audio Books",
+  "Blue Iris - Storage", and any SMB share with spaces in the name.
+
+## v0.6.7
+**KDE/CachyOS Edition**
+- Fixed: Share names containing spaces no longer rejected as "disallowed
+  characters". Space was incorrectly in _BLOCKED_INPUT_CHARS — removed.
+  shlex.quote() already handles spaces safely in all shell contexts.
+- Fixed: install.sh now copies update.sh and uninstall.sh to
+  /opt/tether-kde/ with chmod +x set automatically.
+- Added: update.sh deployment script handles the full safe stop/copy/
+  restart sequence automatically.
+- Added: tether.1 man page installed to /usr/local/share/man/man1/
+- Added: README.md project page with foreword and attribution.
+
+## v0.6.6
+**KDE/CachyOS Edition**
+- Fixed: Dismissed transfers no longer reappear after 2 seconds.
+  Dismissing a card now calls RemoveTransfer on the daemon, removing
+  the record at source so the poller never re-adds it.
+- Added: RemoveTransfer D-Bus method — removes completed/failed jobs.
+- Added: remove_transfer() to client proxy.
+
+## v0.6.5
+**KDE/CachyOS Edition**
+- Added: Transfer history privacy controls.
+  - "Clear History" button removes all completed/failed transfers.
+  - Individual ✕ button on each card when transfer finishes.
+  - Active transfers are never removed automatically.
+
+## v0.6.4
+**KDE/CachyOS Edition**
+- Fixed: Dry run transfer card now shows unambiguous status labels:
+  "Dry run — previewing files, nothing is being copied" during run,
+  "Dry run complete — no files were copied" when finished.
+
+## v0.6.3
+**KDE/CachyOS Edition**
+- Fixed: Qt Wayland warning suppressed via QT_LOGGING_RULES.
+- Fixed: D-Bus signature mismatch on StartTransfer (ss → sss).
+
+## v0.6.2
+**KDE/CachyOS Edition**
+- Fixed: Application crash on dry run — conflicting rsync flags
+  --progress and --info=progress2 were both being passed.
+  Dry run now uses rsync -avhn with no progress flags.
+
+## v0.6.1
+**KDE/CachyOS Edition**
+- Fixed: Transfer dialog now shows mounted network shares as selectable
+  source/destination options. No path typing needed.
+
+## v0.6.0
+**KDE/CachyOS Edition**
+- Added: Full GUI file transfer interface — no terminal required.
+  - "New File Transfer..." button in the Transfers tab.
+  - Browse buttons for source and destination (folder picker).
+  - All rsync options as plain-English checkboxes:
+    Resume, Skip newer, Compress, Preserve permissions,
+    Delete (with confirmation warning), Dry run.
+- Added: Transfer cards with progress bar, speed, ETA,
+  Pause/Resume/Cancel buttons, and plain-English status labels.
+
+## v0.5.x
+**KDE/CachyOS Edition**
+- v0.5.13: Removed unnecessary "Connecting..." dialog.
+- v0.5.12: Mount dialog closes reliably using QTimer polling.
+- v0.5.9: Credentials passed directly through D-Bus — no KWallet
+  timing dependency. CIFS credential files created for every mount.
+- v0.5.6: Critical threading fix — replaced QMetaObject.invokeMethod
+  with pyqtSignal for all thread-to-UI communication.
+- v0.5.4: Wizard Step 2 asks for credentials upfront — simpler and
+  more reliable than anonymous probe + fallback.
+- v0.5.3: Share parser handles names with spaces correctly.
+- v0.5.0: Guided 4-step wizard, network discovery, share listing,
+  Advanced Mode toggle, all options in GUI — no terminal required.
+
+## v0.4.0
+**KDE/CachyOS Edition**
+- Fixed: CIFS credentials file created automatically before mount.
+
+## v0.3.0
+**KDE/CachyOS Edition**
+- Fixed: Protocol selector shows human-readable names
+  (SMB/CIFS, NFS, SSHFS) instead of raw protocol strings.
+
+## v0.2.0
+**KDE/CachyOS Edition — First working release**
+- D-Bus daemon, KDE system tray, KWallet credentials, Dolphin
+  integration, KDE autostart, full CLI.
+
+## v0.1.0
+**Multi-distro reference architecture**
+- Supports KDE, GNOME, XFCE, Cinnamon, MATE, LXQt, Budgie.
+- Supports pacman, apt, dnf.
+- Full security audit: 26 bugs fixed, 10 security findings resolved.
+- Not live-tested — serves as reference architecture.
+
+## v0.7.3 (security audit)
+**KDE/CachyOS Edition**
+- SECURITY: CIFS credentials (username/password) no longer appear in
+  tether.log. The mount script is now logged with credentials replaced
+  by [CREDENTIALS REDACTED]. Previously the full script including
+  plaintext password was written to the log file on every mount.
+- SECURITY: Removed circular import — credentials.py no longer imports
+  from daemon.py, eliminating a potential import-order vulnerability.
+- Fixed: CancelTransfer D-Bus method was missing from the daemon.
+  Dead code after return in RemoveTransfer was extracted into a proper
+  CancelTransfer method. The Cancel button in the GUI now works correctly.
+- Fixed: RemoveMount no longer removes fstab entries and mounts.json
+  records when the umount operation fails — data is only cleaned up
+  on successful unmount.
+- Fixed: DNS resolution in resolve_to_ipv4() now times out after 5
+  seconds using a daemon thread, preventing indefinite hangs on
+  unreachable nameservers.
+- Fixed: socket module moved to module-level import (was inside function).
+- Fixed: _ALLOWED_RSYNC_OPTS moved to module-level frozenset constant
+  (was recreated as a local set on every StartTransfer call).
+- Added: make-release.sh — packages all source files into a self-contained
+  tarball for GitHub release distribution. No AUR required.
+
+## v0.7.4
+**KDE/CachyOS Edition**
+- Fixed: Repeated password prompts while offline. The reconnect monitor
+  was calling pkexec mount every 30 seconds for any unmounted share
+  regardless of network state — each attempt triggered a password
+  dialog even though the mount was guaranteed to fail with no network.
+  Fix: a quick TCP reachability check (no root, no password prompt)
+  now runs before any pkexec call. Unreachable hosts are skipped
+  entirely until they come back online.
+- Added: Backoff logging — once a share has been unreachable for a
+  few cycles, log messages are throttled to avoid log spam during
+  extended offline periods (e.g. laptop away from home network).
+- Added: Per-protocol port selection for reachability checks
+  (cifs:445, nfs:2049, sshfs:22).
+
+## v0.7.4 (continued — security audit)
+- FIXED (functional bug, found in audit): CLI `tether add` command saved
+  credentials to KWallet but never passed username/password to the
+  daemon's AddMount call. Every password-protected CIFS share added via
+  CLI would mount with blank credentials and fail. Now fixed —
+  credentials are passed through correctly.
+- Added: `--dry-run` flag to `tether transfer` CLI command for feature
+  parity with the GUI's dry run checkbox.
+- Fixed: uninstall.sh now detects and offers to clean up Tether-managed
+  fstab entries and samba credential files. Previously these were left
+  behind after uninstall, causing orphaned mount attempts on next boot
+  with no Tether daemon present to manage them. A backup of fstab is
+  created before any changes (/etc/fstab.tether-uninstall.bak).
+- Added: uninstall.sh now removes the installed man page.
+- Fixed: update.sh now re-applies the same file ownership and permission
+  scheme as install.sh after copying updated files (644 root:root for
+  source, 755 for launcher.py). Previously a plain cp could leave
+  permissions inconsistent after repeated updates.
+- Fixed: tether-daemon.service Documentation= field pointed to a
+  placeholder URL (github.com/yourusername/tether) — corrected to the
+  real repository.
+- Audit: full scan for shell=True, eval/exec, os.system, pickle,
+  hardcoded secrets, bare excepts, and unsafe permissions — all clear.
+
+## v0.7.5
+**KDE/CachyOS Edition**
+- Added: "Scan for Other Mounts" feature — finds mountpoints under /mnt
+  that exist (currently mounted, or left in fstab) but aren't tracked by
+  the running Tether install. Covers the common case of leftover shares
+  from a previous install or an interrupted uninstall that Dolphin can't
+  unmount because they're root-owned.
+  - GUI: Options menu → "Scan for Other Mounts…" opens a dialog listing
+    found mounts with checkboxes; select and click "Unmount & Remove"
+    to clean them up (with a confirmation prompt first).
+  - CLI: `tether scan` lists found mounts; `tether scan --remove`
+    walks through them interactively.
+  - Added daemon D-Bus methods: ScanOrphaned, RemoveOrphanedMount.
+  - fstab line removal uses exact whitespace-field matching (not
+    substring search) so e.g. removing /mnt/Games never affects
+    /mnt/Games2 or similar lookalike paths.
+  - Associated CIFS credentials file is removed alongside the fstab
+    entry and mount.
+
+## v0.7.6
+**KDE/CachyOS Edition**
+- Fixed: "Scan for Other Mounts" was only reachable via the Options
+  menu, which is too easy to miss. Added a visible button directly on
+  the Network Connections tab next to "Connect to Network Share…" so
+  the feature is discoverable without digging through menus.
+
+## v0.7.7
+**KDE/CachyOS Edition**
+- Fixed: Removing multiple orphaned mounts via "Scan for Other Mounts"
+  triggered a separate pkexec password prompt for EACH mount, since
+  pkexec has no authentication caching like sudo. Selecting 2 leftover
+  shares meant entering your password twice in a row, which looked
+  like Tether was ignoring credentials you'd just entered.
+  Fix: added RemoveOrphanedMounts (plural) — batches any number of
+  mounts into a single script and a single pkexec call, so removing
+  5 leftover shares now takes exactly one authentication, not five.
+  Applies to both the GUI dialog and `tether scan --remove`.
+- The original single-mount RemoveOrphanedMount D-Bus method is kept
+  as a thin wrapper around the batch version for compatibility.
+
+## v0.7.7 — CRITICAL FIX
+**KDE/CachyOS Edition**
+- CRITICAL: Fixed the root cause of repeated/endless password prompts
+  that could lock users out of sudo entirely, requiring a reboot.
+  Root cause: mounts.json is intentionally preserved across uninstall/
+  reinstall (treated as personal data). If a previous install's fstab
+  entries were removed (e.g. during uninstall) but mounts.json still
+  listed the labels, the reconnect loop would call pkexec every 30
+  seconds for mounts that could never succeed — each call still shows
+  a password prompt even though the underlying mount is guaranteed to
+  fail. Repeated unanswered/failed authentication attempts in a short
+  window can trigger polkit/PAM lockout behaviour on some systems.
+  Fix: the daemon now verifies a live, exactly-matching fstab entry
+  exists for every mount before ever calling pkexec. Stale records
+  with no matching fstab line are automatically pruned from
+  mounts.json — both at daemon startup and continuously during the
+  reconnect loop — and are never retried again.
+- Added: Circuit-breaker backoff for mounts that keep failing even
+  with a valid fstab entry and reachable host (e.g. stale stored
+  credentials, share renamed on the server). Failures back off
+  exponentially (1, 2, 4, 8 minutes, capping at 10 minutes) instead
+  of retrying — and prompting — every 30 seconds forever.
+- Fixed: fstab tag matching now uses an exact comparison instead of
+  substring search, preventing a label like "Game" from falsely
+  matching an entry tagged "Games".
+
+## v0.7.7
+**KDE/CachyOS Edition**
+- FIXED (root cause): `RemoveMount` (used by every normal "remove share"
+  action, in both the GUI and CLI) was unmounting the share and removing
+  its fstab entry, but never deleting the CIFS credentials file at
+  /etc/samba/.tether_LABEL. Every single share removal — going all the
+  way back through this project's history — left a leftover credentials
+  file behind. The "Scan for Other Mounts" feature was catching the
+  symptom; this release fixes the actual source of the leak.
+- Added: "Scan for Other Mounts" now also detects standalone orphaned
+  credentials files (a leftover .tether_LABEL file with no active mount
+  and no fstab entry) — exactly the kind of leftover the RemoveMount bug
+  above was creating. These are shown with a clear "leftover password
+  file only" label and can be cleaned up the same way as any other
+  orphaned mount.
+- Added: Audit log. Every AddMount, RemoveMount, and orphan cleanup is
+  now recorded to ~/.local/share/tether/audit.log as newline-delimited
+  JSON — timestamp, action, label, affected paths, and result. Never
+  contains usernames or passwords. View it with the new `tether log`
+  command. This gives a durable record of every change Tether has made
+  to the system, independent of current filesystem state, so future
+  cleanup tooling (or the user) doesn't have to guess what was created.
+- Added: `tether log [-n COUNT]` CLI command to view the audit log.
+
+## v0.7.8
+**KDE/CachyOS Edition**
+- Added: Dolphin sidebar refresh notification after unmounting a share.
+  CIFS mounts via fstab don't go through udisks2 like removable media
+  does, so Dolphin never receives a live notification when Tether
+  unmounts something — the Places/Network entry stayed visible until
+  a manual refresh, Dolphin restart, or full reboot. Tether now sends
+  a best-effort org.kde.KDirNotify FilesRemoved D-Bus signal after
+  every successful unmount (including batch orphan cleanup) so the
+  sidebar updates immediately in most cases. This is cosmetic only —
+  the actual unmount has already completed successfully regardless of
+  whether Dolphin picks up the notification.
+
+## v0.7.9
+**KDE/CachyOS Edition**
+- Fixed: install.sh's polkit agent detection was using `pgrep -x` with
+  guessed process names, which is unreliable since `pgrep -x` matches
+  against the kernel's truncated 15-character comm field, not the full
+  process name. This caused a false "polkit agent does not appear to
+  be running" warning even when pkexec was working correctly. Now
+  checks `systemctl --user is-active plasma-polkit-agent.service`
+  first (the actual KDE-shipped unit name), falling back to `pgrep -f`
+  (full command-line match, not truncated) only if needed.
+- Documented: Dolphin Places sidebar may show a removed share until
+  Dolphin is restarted or the system reboots — a known KDE/Dolphin
+  caching quirk (CIFS-via-fstab mounts don't trigger the same live
+  notifications as removable media). Tether already sends a best-
+  effort refresh signal; this is now documented as a known limitation
+  in the man page rather than something users need to report.

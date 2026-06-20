@@ -7,7 +7,7 @@ Auto-starts the daemon if not running.
 One module-level bus and proxy per process — no redundant connections.
 """
 
-VERSION = '0.7.0'
+VERSION = '0.7.9'
 
 import os
 import sys
@@ -104,6 +104,28 @@ class TetherClient:
 
     def list_mounts(self) -> dict:
         return _parse(self._proxy.ListMounts(), 'list_mounts')
+
+    def scan_orphaned_mounts(self) -> list:
+        """
+        Find mountpoints under /mnt that exist (mounted or in fstab)
+        but aren't tracked by this Tether install. Returns a list of
+        dicts: {mountpoint, source, fstype, mounted, fstab_tagged}.
+        """
+        try:
+            return json.loads(str(self._proxy.ScanOrphaned()))
+        except (json.JSONDecodeError, TypeError, ValueError) as e:
+            log.error('scan_orphaned_mounts parse error: %s', e)
+            return []
+
+    def remove_orphaned_mounts(self, mountpoints: list) -> str:
+        """
+        Remove multiple orphaned mounts in a single pkexec call —
+        one authentication regardless of how many are selected.
+        """
+        return str(self._proxy.RemoveOrphanedMounts(json.dumps(list(mountpoints))))
+
+    def remove_orphaned_mount(self, mountpoint: str) -> str:
+        return str(self._proxy.RemoveOrphanedMount(str(mountpoint)))
 
     # transfers
     def start_transfer(self, src: str, dst: str,

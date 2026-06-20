@@ -67,6 +67,11 @@ underlying technology is excellent. The gap is presentation, not capability.
 - **KDE system tray** — lives in your tray, reconnects dropped mounts
   in the background
 - **Dolphin integration** — mounts appear in Dolphin's sidebar under Network
+- **Scan for Other Mounts** — finds leftover shares from a previous install
+  or interrupted uninstall (mount points, fstab entries, or stray credential
+  files) and cleans them up in one click — no terminal needed
+- **Audit log** — every mount, unmount, and cleanup action is recorded with
+  a timestamp; view it with `tether log`
 
 ---
 
@@ -77,24 +82,30 @@ underlying technology is excellent. The gap is presentation, not capability.
 > via [GitHub Issues](https://github.com/InsaneAI1973/Tether/issues) are
 > very welcome.
 
-**Version 0.7.2 — KDE/CachyOS Edition**
+**Version 0.7.9 — KDE/CachyOS Edition**
 
-Actively developed and tested on KDE Plasma 6.6.5 / KWin Wayland / CachyOS.
-Core functionality is working:
+Actively developed and tested on KDE Plasma 6.6.5 / KWin Wayland / CachyOS,
+on both laptop and desktop hardware. Core functionality is working:
 
 - ✅ SMB/CIFS mount and unmount via guided wizard and CLI
-- ✅ Automatic network discovery — finds servers and lists shares
+- ✅ Automatic network discovery — finds servers and lists shares,
+  IPv4 only (IPv6 entries filtered automatically)
 - ✅ Share names with spaces fully supported
 - ✅ Persistent mounts surviving reboot via fstab
+- ✅ Reconnects automatically when the network comes back — no repeated
+  password prompts while offline
 - ✅ KDE system tray with autostart on login
 - ✅ Dolphin file manager integration
 - ✅ File transfers with progress, speed, ETA, pause/resume/cancel
 - ✅ All rsync options as plain-English checkboxes — no terminal needed
 - ✅ Transfer history with individual dismiss and Clear History
+- ✅ Scan for Other Mounts — finds and cleans up leftover shares,
+  fstab entries, and orphaned credential files
+- ✅ Audit log of every change Tether makes (`tether log`)
 - ✅ Advanced mode for power users
 - ✅ Full CLI for headless/server use
 - ✅ Credentials stored in KWallet — never in plaintext config files
-- ✅ IPv4 preferred over IPv6 for maximum compatibility
+- ✅ Automatic X11/Wayland detection — no manual environment variables
 
 This release targets **KDE Plasma on CachyOS** (Arch-based). Support for
 additional desktop environments and distributions is planned once the core
@@ -106,15 +117,37 @@ is stable.
 
 **Requirements:** CachyOS or Arch Linux, KDE Plasma (Wayland or X11)
 
+### Option 1 — Release package (recommended)
+
+Download the latest release tarball from
+[GitHub Releases](https://github.com/InsaneAI1973/Tether/releases), then:
+
 ```bash
-git clone https://github.com/InsaneAI1973/tether.git
-cd tether/kde-cachy
+tar -xzf tether-v0.7.9-kde-cachy.tar.gz
+cd tether-v0.7.9-kde-cachy
 chmod +x install.sh
 ./install.sh
 ```
 
-The installer uses pacman to pull all dependencies automatically, including
-`polkit-kde-agent` which is required for the password dialog on Wayland.
+Or in one line:
+
+```bash
+curl -L https://github.com/InsaneAI1973/Tether/releases/latest/download/tether-v0.7.9-kde-cachy.tar.gz | tar -xz && cd tether-v0.7.9-kde-cachy && ./install.sh
+```
+
+### Option 2 — Clone from source
+
+```bash
+git clone https://github.com/InsaneAI1973/Tether.git
+cd Tether/kde-cachy
+chmod +x install.sh
+./install.sh
+```
+
+Both methods use pacman to pull all dependencies automatically — including
+`polkit-kde-agent` (password dialogs) and `qt5-wayland`/`qt6-wayland`
+(required for the GUI to launch on Wayland sessions). All dependencies come
+from official pacman repositories only; the AUR is not used.
 
 **First run test:**
 
@@ -130,10 +163,13 @@ Dolphin → Actions → Mount Network Location here…
 
 ## Updating
 
-When new files are available, use the included update script which handles
-the correct stop/copy/restart sequence automatically:
+Download the new release tarball, extract it, and run the included update
+script from that folder. It handles the correct stop/copy/restart sequence
+automatically — no manual systemctl commands needed:
 
 ```bash
+tar -xzf tether-vX.Y.Z-kde-cachy.tar.gz
+cd tether-vX.Y.Z-kde-cachy
 chmod +x update.sh
 ./update.sh
 ```
@@ -146,7 +182,9 @@ chmod +x update.sh
 tether list                          List mounts and status
 tether add [--label] [--protocol]    Add a network share (interactive)
 tether remove LABEL                  Unmount and remove a share
-tether transfer SRC DST              Start an rsync transfer
+tether scan [--remove]               Find and clean up leftover/orphaned mounts
+tether log [-n COUNT]                Show the audit log of changes made
+tether transfer SRC DST [--dry-run]  Start an rsync transfer
 tether pause JOB_ID                  Pause a transfer
 tether resume JOB_ID                 Resume a paused transfer
 tether cancel JOB_ID                 Cancel a transfer

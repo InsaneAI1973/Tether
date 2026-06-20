@@ -211,8 +211,9 @@ fi
 # ── Polkit check ──────────────────────────────────────────────────────────────
 section "Polkit agent check"
 
-if pgrep -x polkit-kde-authentic &>/dev/null || \
-   pgrep -x "polkit-kde-authentication-agent-1" &>/dev/null; then
+if systemctl --user is-active --quiet plasma-polkit-agent.service 2>/dev/null || \
+   pgrep -f "polkit-kde-authentication-agent" &>/dev/null || \
+   pgrep -f "polkit-kde-agent" &>/dev/null; then
     info "KDE polkit agent is running. ✓"
 else
     warn "KDE polkit agent does not appear to be running.

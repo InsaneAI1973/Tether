@@ -63,6 +63,13 @@ for f in daemon.py client.py frontend.py launcher.py credentials.py cli.py; do
     fi
 done
 
+# Re-lock permissions — must match install.sh's scheme exactly.
+# cp does not preserve source permissions, so this is required on
+# every update to prevent permission drift (e.g. world-writable files).
+sudo find "${INSTALL_DIR}" -name '*.py' -exec chmod 644 {} \;
+sudo chmod 755 "${INSTALL_DIR}/launcher.py"
+sudo chown -R root:root "${INSTALL_DIR}"
+
 # Copy service file if present
 if [[ -f "${SCRIPT_DIR}/tether-daemon.service" ]]; then
     cp "${SCRIPT_DIR}/tether-daemon.service" \

@@ -6,7 +6,7 @@ CLI Frontend
 Full terminal interface — works headless, over SSH, in scripts.
 """
 
-VERSION = '0.7.0'
+VERSION = '0.7.9'
 
 import sys
 import os
@@ -15,6 +15,7 @@ import json
 import argparse
 import getpass
 import logging
+from pathlib import Path
 
 log = logging.getLogger('tether.cli')
 
@@ -118,7 +119,10 @@ def cmd_add(args):
             print(f'{YELLOW}Warning: KWallet save failed: {e}{RESET}')
 
     print(f'Mounting {CYAN}{label}{RESET}…', end=' ', flush=True)
-    result = client.add_mount(label, protocol, host, path, options, label)
+    result = client.add_mount(
+        label, protocol, host, path, options, label,
+        username, password,
+    )
 
     if result.startswith('OK'):
         print(f'{GREEN}Done.{RESET}')
@@ -144,11 +148,62 @@ def cmd_remove(args):
         print(f'{RED}Failed:{RESET} {result}')
 
 
+def cmd_scan(args):
+    client  = _client()
+    orphans = client.scan_orphaned_mounts()
+
+    if not orphans:
+        print(f'{GREEN}No other mounts found.{RESET} '
+              f'Everything under /mnt is managed by Tether.')
+        return
+
+    print(f'\n{BOLD}Found {len(orphans)} mount(s) not managed by Tether:{RESET}\n')
+    for i, o in enumerate(orphans, 1):
+        status = []
+        if o.get('credentials_only'):
+            status.append('leftover password file only — no mount, no fstab entry')
+        else:
+            status.append('mounted' if o.get('mounted') else 'not mounted')
+            if o.get('fstab_tagged'):
+                status.append('fstab entry present')
+        print(f'  {i}) {CYAN}{o["mountpoint"]}{RESET}')
+        print(f'     {o.get("source","?")}  ({o.get("fstype","?")})  '
+              f'— {", ".join(status)}')
+    print()
+
+    if not getattr(args, 'remove', False):
+        print(f'Run {BOLD}tether scan --remove{RESET} to unmount and '
+              f'clean these up interactively.')
+        return
+
+    to_remove = []
+    for o in orphans:
+        mp = o['mountpoint']
+        reply = input(f'Remove {CYAN}{mp}{RESET}? [y/N] ').strip().lower()
+        if reply == 'y':
+            to_remove.append(mp)
+        else:
+            print('  Skipped.')
+
+    if not to_remove:
+        print('Nothing selected.')
+        return
+
+    print(f'\nRemoving {len(to_remove)} mount(s) — '
+          f'one authentication prompt for all of them…')
+    result = client.remove_orphaned_mounts(to_remove)
+    if result.startswith('OK'):
+        print(f'{GREEN}{result}{RESET}')
+    else:
+        print(f'{RED}Failed:{RESET} {result}')
+
+
 def cmd_transfer(args):
-    client = _client()
-    src    = getattr(args, 'src', '') or _ask('Source path')
-    dst    = getattr(args, 'dst', '') or _ask('Destination path')
-    result = client.start_transfer(src, dst)
+    client  = _client()
+    src     = getattr(args, 'src', '') or _ask('Source path')
+    dst     = getattr(args, 'dst', '') or _ask('Destination path')
+    options = ['--dry-run'] if getattr(args, 'dry_run', False) else None
+    result  = client.start_transfer(src, dst, options)
     if result.startswith('ERROR'):
         print(f'{RED}Failed:{RESET} {result}')
     else:
@@ -257,9 +312,15 @@ def build_parser() -> argparse.ArgumentParser:
     r = sub.add_parser('remove', help='Unmount and remove a share')
     r.add_argument('label', nargs='?', default='')
 
+    sc = sub.add_parser('scan', help='Find mounts under /mnt not managed by Tether')
+    sc.add_argument('--remove', action='store_true',
+                     help='Interactively unmount and remove found mounts')
+
     t = sub.add_parser('transfer', help='Start rsync transfer with resume support')
     t.add_argument('src', nargs='?', default='')
     t.add_argument('dst', nargs='?', default='')
+    t.add_argument('--dry-run', action='store_true',
+                    help='Preview what would be transferred without copying')
 
     pa = sub.add_parser('pause',  help='Pause a transfer')
     pa.add_argument('job_id')
@@ -273,11 +334,39 @@ def build_parser() -> argparse.ArgumentParser:
     w = sub.add_parser('watch', help='Live dashboard')
     w.add_argument('--interval', type=int, default=2, metavar='SECS')
 
+    lg = sub.add_parser('log', help='Show the audit log of mount/credential changes')
+    lg.add_argument('-n', type=int, default=20, metavar='COUNT',
+                     help='Number of most recent entries to show (default: 20)')
+
     return p
+
+
+def cmd_log(args):
+    path = Path.home() / '.local/share/tether/audit.log'
+    if not path.exists():
+        print('No audit log yet — no changes have been recorded.')
+        return
+
+    lines = path.read_text(encoding='utf-8').splitlines()
+    n     = max(1, getattr(args, 'n', 20))
+    for line in lines[-n:]:
+        try:
+            entry = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        ts     = entry.pop('ts', '?')
+        action = entry.pop('action', '?')
+        label  = entry.pop('label', '?')
+        result = entry.pop('result', '?')
+        color  = GREEN if result == 'OK' else (RED if result.startswith('ERROR') else YELLOW)
+        extras = '  '.join(f'{k}={v}' for k, v in entry.items() if v)
+        print(f'{ts}  {BOLD}{action:14s}{RESET}  {CYAN}{label}{RESET}  '
+              f'{color}{result}{RESET}  {extras}')
 
 
 COMMANDS = {
     'list': cmd_list, 'add': cmd_add, 'remove': cmd_remove,
+    'scan': cmd_scan, 'log': cmd_log,
     'transfer': cmd_transfer, 'pause': cmd_pause,
     'resume': cmd_resume, 'cancel': cmd_cancel, 'watch': cmd_watch,
 }

@@ -17,7 +17,7 @@ Security:
   - No user data ever interpolated into shell -c strings
 """
 
-VERSION = '0.7.0'
+VERSION = '0.7.9'
 
 import os
 import json
@@ -170,8 +170,8 @@ def write_samba_cred_file(label: str, username: str, password: str) -> str:
     Security: credentials go to a chmod 600 temp file; path passed via
     shlex.quote() — no user data in any shell -c string.
     """
-    from daemon import sanitize_label
-    safe_label = sanitize_label(label)
+    import re as _re
+    safe_label = _re.sub(r'[^a-zA-Z0-9_\-]', '_', str(label))[:32].strip('_') or 'mount'
     cred_path  = f'/etc/samba/.tether_{safe_label}'
     content    = f'username={username}\npassword={password}\n'
 
